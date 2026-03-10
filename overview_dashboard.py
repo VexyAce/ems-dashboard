@@ -8,9 +8,10 @@ import threading
 import time
 from datetime import datetime
 import os
+import random
 
 # =================================================
-# SUPABASE DATABASE CONFIG
+# DATABASE CONFIG
 # =================================================
 
 DATABASE_URL = "postgresql://postgres.vgffglhsnxdfygtgyepu:Limlimlimwee2@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
@@ -62,18 +63,6 @@ def kpi_card(title, value, unit, color="#1F4FD8"):
     )
 
 # =================================================
-# DATE RANGE
-# =================================================
-
-bounds = pd.read_sql(
-    "SELECT MIN(timestamp) AS min_d, MAX(timestamp) AS max_d FROM energy_data",
-    engine
-)
-
-MIN_DATE = bounds.loc[0, "min_d"]
-MAX_DATE = bounds.loc[0, "max_d"]
-
-# =================================================
 # FETCH DATA
 # =================================================
 
@@ -105,39 +94,75 @@ def fetch_data(start_date, end_date, system_list, agg_level):
     return pd.read_sql(sql, engine, params=params)
 
 # =================================================
-# AUTOMATED DAILY EXPORT
+# SIMULATED DATA GENERATOR (EVERY MINUTE)
 # =================================================
+
+def generate_energy_data():
+
+    now = datetime.now()
+
+    ranges = {
+        "Boiler & Steam System (BSS)": (8,15),
+        "Heat Pump System (HPS)": (6,12),
+        "Pump System (PS)": (3,7),
+        "Fan System (FS)": (2,5),
+        "Air Compressor System (ACIACS)": (7,14),
+        "Lighting System (LS)": (1,3),
+    }
+
+    records = []
+
+    for system in ALL_SYSTEM_NAMES:
+
+        low, high = ranges.get(system,(1,5))
+        energy = round(random.uniform(low,high),2)
+
+        records.append({
+            "timestamp": now,
+            "system": system,
+            "energy_kwh": energy
+        })
+
+    df = pd.DataFrame(records)
+
+    df.to_sql("energy_data",engine,if_exists="append",index=False)
+
+    print("Simulated data inserted:",now)
+
+# =================================================
+# DAILY REPORT EXPORT (DATABASE)
+# =================================================
+
 def automated_daily_export():
 
     today = datetime.today().date()
 
-    df = fetch_data(today, today, ALL_SYSTEM_NAMES, "daily")
+    df = fetch_data(today,today,ALL_SYSTEM_NAMES,"daily")
 
     if df.empty:
-        print("No data available for daily report.")
+        print("No data today.")
         return
 
     df["report_date"] = today
+    df = df[["report_date","system","energy_kwh","carbon_kgco2"]]
 
-    df = df[["report_date", "system", "energy_kwh", "carbon_kgco2"]]
+    df.to_sql("daily_reports",engine,if_exists="append",index=False)
 
-    df.to_sql(
-        "daily_reports",
-        engine,
-        if_exists="append",
-        index=False
-    )
+    print("Daily report saved.")
 
-    print(f"Daily report stored in database for {today}")
+# =================================================
+# SCHEDULER
+# =================================================
 
+schedule.every(1).minutes.do(generate_energy_data)
 schedule.every().day.at("23:59").do(automated_daily_export)
 
 def run_scheduler():
     while True:
         schedule.run_pending()
-        time.sleep(60)
+        time.sleep(1)
 
-threading.Thread(target=run_scheduler, daemon=True).start()
+threading.Thread(target=run_scheduler,daemon=True).start()
 
 # =================================================
 # DASH APP
@@ -148,114 +173,100 @@ server = app.server
 app.title = "SIT Energy Management System"
 
 # =================================================
+# DATE RANGE
+# =================================================
+
+bounds = pd.read_sql(
+"SELECT MIN(timestamp) AS min_d, MAX(timestamp) AS max_d FROM energy_data",
+engine
+)
+
+MIN_DATE = bounds.loc[0,"min_d"]
+MAX_DATE = bounds.loc[0,"max_d"]
+
+# =================================================
 # LAYOUT
 # =================================================
 
 app.layout = html.Div(
-    style={"display": "flex", "fontFamily": "Segoe UI", "background": "#F4F6FB"},
-    children=[
 
-        dcc.Store(id="active-view", data="overview"),
+style={"display":"flex","fontFamily":"Segoe UI","background":"#F4F6FB"},
 
-        # SIDEBAR
-        html.Div(
-            style={
-                "width": "260px",
-                "background": "#1F4FD8",
-                "color": "white",
-                "padding": "20px",
-                "height": "100vh",
-                "overflowY": "auto"
-            },
-            children=[
-                html.H3("EMS Dashboard"),
-                html.P("System-Based Reporting"),
-                html.Hr(),
+children=[
 
-                html.Button("Overview", id="nav-overview",
-                            style={"width": "100%", "marginBottom": "10px"}),
+dcc.Store(id="active-view",data="overview"),
 
-                html.Hr(),
-                html.P("Systems", style={"fontWeight": "bold"}),
+# SIDEBAR
+html.Div(
 
-                *[
-                    html.Button(v["label"], id=f"nav-{k}",
-                                style={"width": "100%", "marginBottom": "6px"})
-                    for k, v in systems.items()
-                ],
+style={
+"width":"260px",
+"background":"#1F4FD8",
+"color":"white",
+"padding":"20px",
+"height":"100vh"
+},
 
-                html.Hr(),
-                html.P("System Comparison", style={"fontWeight": "bold"}),
+children=[
 
-                dcc.Dropdown(
-                    id="compare-a",
-                    options=SYSTEM_OPTIONS,
-                    placeholder="Select System A",
-                    style={"marginBottom": "6px", "color": "black"}
-                ),
+html.H3("EMS Dashboard"),
+html.Hr(),
 
-                dcc.Dropdown(
-                    id="compare-b",
-                    options=SYSTEM_OPTIONS,
-                    placeholder="Select System B",
-                    style={"marginBottom": "10px", "color": "black"}
-                ),
+html.Button("Overview",id="nav-overview",style={"width":"100%"}),
 
-                html.Button("Export Current View (CSV)", id="export-btn", style={"width": "100%"}),
-                dcc.Download(id="download-report")
-            ]
-        ),
+html.Hr(),
 
-        # MAIN
-        html.Div(
-            style={"flex": "1", "padding": "25px"},
-            children=[
+html.P("Systems"),
 
-                html.Div(
-                    style={
-                        "background": "white",
-                        "padding": "15px",
-                        "borderRadius": "12px",
-                        "boxShadow": "0 4px 10px rgba(0,0,0,0.08)"
-                    },
-                    children=[
-                        html.H2("Singapore Institute of Technology",
-                                style={"margin": "0", "color": "#1F4FD8"}),
-                        html.P("Energy Efficiency Technology Laboratory – Energy Management System",
-                               style={"margin": "0", "color": "#555"})
-                    ]
-                ),
+*[
+html.Button(v["label"],id=f"nav-{k}",style={"width":"100%"})
+for k,v in systems.items()
+],
 
-                html.Br(),
+html.Hr(),
 
-                html.Div(
-                    style={"display": "flex", "gap": "20px"},
-                    children=[
-                        dcc.DatePickerRange(
-                            id="date-range",
-                            min_date_allowed=MIN_DATE,
-                            max_date_allowed=MAX_DATE,
-                            start_date=MIN_DATE,
-                            end_date=MAX_DATE
-                        ),
+html.Button("Daily Reports",id="nav-daily",style={"width":"100%"}),
 
-                        dcc.RadioItems(
-                            id="agg-level",
-                            options=[
-                                {"label": "Daily", "value": "daily"},
-                                {"label": "Monthly", "value": "monthly"}
-                            ],
-                            value="monthly",
-                            inline=True
-                        )
-                    ]
-                ),
+html.Hr(),
 
-                html.Br(),
-                html.Div(id="page-content")
-            ]
-        )
-    ]
+dcc.Dropdown(id="compare-a",options=SYSTEM_OPTIONS,placeholder="System A"),
+
+dcc.Dropdown(id="compare-b",options=SYSTEM_OPTIONS,placeholder="System B"),
+
+]
+),
+
+# MAIN CONTENT
+html.Div(
+style={"flex":"1","padding":"25px"},
+children=[
+
+html.H2("Energy Management System"),
+
+dcc.DatePickerRange(
+id="date-range",
+start_date=MIN_DATE,
+end_date=MAX_DATE
+),
+
+dcc.RadioItems(
+id="agg-level",
+options=[
+{"label":"Daily","value":"daily"},
+{"label":"Monthly","value":"monthly"}
+],
+value="monthly",
+inline=True
+),
+
+html.Br(),
+
+html.Div(id="page-content")
+
+]
+)
+
+]
 )
 
 # =================================================
@@ -263,228 +274,197 @@ app.layout = html.Div(
 # =================================================
 
 @app.callback(
-    Output("page-content","children"),
-    Output("active-view","data"),
-    Input("nav-overview","n_clicks"),
-    *[Input(f"nav-{k}","n_clicks") for k in systems],
-    Input("compare-a","value"),
-    Input("compare-b","value"),
-    Input("date-range","start_date"),
-    Input("date-range","end_date"),
-    Input("agg-level","value"),
-    State("active-view","data"),
+
+Output("page-content","children"),
+Output("active-view","data"),
+
+Input("nav-overview","n_clicks"),
+Input("nav-daily","n_clicks"),
+
+*[Input(f"nav-{k}","n_clicks") for k in systems],
+
+Input("compare-a","value"),
+Input("compare-b","value"),
+
+Input("date-range","start_date"),
+Input("date-range","end_date"),
+Input("agg-level","value"),
+
+State("active-view","data")
+
 )
 
-def render_page(_, *args):
+def render_page(_,__ ,*args):
 
-    compare_a, compare_b, start, end, agg, active_view = args[-6:]
+    compare_a,compare_b,start,end,agg,active_view=args[-6:]
 
-    ctx = dash.callback_context
-    trigger = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else None
+    ctx=dash.callback_context
+    trigger=ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else None
 
-    if trigger == "nav-overview":
-        active_view = "overview"
+    if trigger=="nav-overview":
+        active_view="overview"
+
+    elif trigger=="nav-daily":
+        active_view="daily"
 
     elif trigger and trigger.startswith("nav-"):
-        key = trigger.replace("nav-","")
+        key=trigger.replace("nav-","")
         if key in systems:
-            active_view = key
+            active_view=key
 
     elif compare_a and compare_b:
-        active_view = "compare"
+        active_view="compare"
 
-    # ================= COMPARISON =================
+# =================================================
+# COMPARISON PAGE
+# =================================================
 
-    if active_view == "compare" and compare_a and compare_b:
+    if active_view=="compare" and compare_a and compare_b:
 
-        df = fetch_data(start,end,[compare_a,compare_b],agg)
+        df=fetch_data(start,end,[compare_a,compare_b],agg)
 
-        trend = df.groupby(["date","system"],as_index=False).sum()
+        trend=df.groupby(["date","system"],as_index=False).sum()
 
-        fig = go.Figure()
+        fig=go.Figure()
 
         for s in [compare_a,compare_b]:
 
-            s_df = trend[trend["system"]==s]
+            s_df=trend[trend["system"]==s]
 
-            fig.add_bar(
-                x=s_df["date"],
-                y=s_df["energy_kwh"],
-                name=s
-            )
+            fig.add_bar(x=s_df["date"],y=s_df["energy_kwh"],name=s)
 
-        fig.update_layout(
-            title="System Energy Comparison",
-            yaxis_title="Energy (kWh)",
-            barmode="group",
-            template="plotly_white"
-        )
+        fig.update_layout(barmode="group",template="plotly_white")
 
         return html.Div([
 
             html.H3("System Comparison"),
 
-            html.Div(
-                style={"background":"white","padding":"15px","borderRadius":"12px"},
-                children=[dcc.Graph(figure=fig)]
-            )
+            dcc.Graph(figure=fig)
 
-        ]), active_view
+        ]),active_view
 
-    # ================= OVERVIEW =================
+# =================================================
+# DAILY REPORT PAGE
+# =================================================
 
-    if active_view == "overview":
+    if active_view=="daily":
 
-        df = fetch_data(start,end,None,agg)
+        df=pd.read_sql("""
+        SELECT report_date,
+        SUM(energy_kwh) energy,
+        SUM(carbon_kgco2) carbon
+        FROM daily_reports
+        GROUP BY report_date
+        ORDER BY report_date
+        """,engine)
 
-        total_energy = df["energy_kwh"].sum()
-        total_carbon = df["carbon_kgco2"].sum()
+        if df.empty:
+            return html.H3("No reports yet"),active_view
 
-        days = max((pd.to_datetime(end)-pd.to_datetime(start)).days,1)
+        fig=go.Figure()
 
-        avg_energy = total_energy/days
-        avg_carbon = total_carbon/days
+        fig.add_bar(x=df["report_date"],y=df["energy"],name="Energy")
 
-        energy_pie = df.groupby("system",as_index=False)["energy_kwh"].sum()
-        carbon_pie = df.groupby("system",as_index=False)["carbon_kgco2"].sum()
+        fig.add_scatter(x=df["report_date"],y=df["carbon"],yaxis="y2",name="Carbon")
 
-        top_system = energy_pie.sort_values("energy_kwh",ascending=False).iloc[0]
-
-        prev_start = pd.to_datetime(start)-(pd.to_datetime(end)-pd.to_datetime(start))
-        prev_end = pd.to_datetime(start)
-
-        prev_df = fetch_data(prev_start,prev_end,None,agg)
-
-        carbon_reduction = prev_df["carbon_kgco2"].sum()-total_carbon
-
-        trend = df.groupby("date",as_index=False).sum()
-
-        trend_fig = go.Figure()
-
-        trend_fig.add_bar(x=trend["date"],y=trend["energy_kwh"],name="Energy")
-
-        trend_fig.add_scatter(
-            x=trend["date"],
-            y=trend["carbon_kgco2"],
-            yaxis="y2",
-            name="Carbon"
-        )
-
-        trend_fig.update_layout(
-            yaxis2=dict(overlaying="y",side="right"),
-            template="plotly_white"
-        )
-
-        energy_pie_fig = go.Figure(
-            data=[go.Pie(labels=energy_pie["system"],values=energy_pie["energy_kwh"],hole=0.3)]
-        )
-
-        carbon_pie_fig = go.Figure(
-            data=[go.Pie(labels=carbon_pie["system"],values=carbon_pie["carbon_kgco2"],hole=0.3)]
-        )
+        fig.update_layout(yaxis2=dict(overlaying="y",side="right"))
 
         return html.Div([
 
-            html.H3("EMS Overview & Carbon Reporting"),
+        html.H3("Daily Reports"),
 
-            html.Div(
-                style={"display":"flex","gap":"20px","marginBottom":"20px"},
-                children=[
-                    kpi_card("Total Energy",total_energy,"kWh"),
-                    kpi_card("Total Carbon",total_carbon,"kgCO₂","#E67E22"),
-                    kpi_card("Avg Daily Energy",avg_energy,"kWh/day","#27AE60"),
-                    kpi_card("Avg Daily Carbon",avg_carbon,"kgCO₂/day","#8E44AD"),
-                    kpi_card("Top Energy System",top_system["system"],"Highest Consumption","#C0392B"),
-                    kpi_card("Carbon Reduction",carbon_reduction,"kgCO₂","#16A085"),
-                ]
-            ),
+        dcc.Graph(figure=fig)
 
-            html.Div(
-                style={"background":"white","padding":"15px","borderRadius":"12px","marginBottom":"20px"},
-                children=[dcc.Graph(figure=trend_fig)]
-            ),
+        ]),active_view
 
-            html.Div(
-                style={"display":"flex","gap":"20px"},
-                children=[
+# =================================================
+# OVERVIEW PAGE
+# =================================================
 
-                    html.Div(
-                        style={"flex":"1","background":"white","padding":"15px","borderRadius":"12px"},
-                        children=[dcc.Graph(figure=energy_pie_fig)]
-                    ),
+    if active_view=="overview":
 
-                    html.Div(
-                        style={"flex":"1","background":"white","padding":"15px","borderRadius":"12px"},
-                        children=[dcc.Graph(figure=carbon_pie_fig)]
-                    )
+        df=fetch_data(start,end,None,agg)
 
-                ]
-            )
+        if df.empty:
+            return html.H3("No data yet"),active_view
 
-        ]), active_view
+        total_energy=df["energy_kwh"].sum()
+        total_carbon=df["carbon_kgco2"].sum()
 
-    # ================= SINGLE SYSTEM =================
+        energy_pie=df.groupby("system")["energy_kwh"].sum()
+        carbon_pie=df.groupby("system")["carbon_kgco2"].sum()
 
-    system = systems.get(active_view)
+        trend=df.groupby("date",as_index=False).sum()
 
-    if system:
-
-        df = fetch_data(start,end,[system["name"]],agg)
-
-        total_energy = df["energy_kwh"].sum()
-        total_carbon = df["carbon_kgco2"].sum()
-
-        days = max((pd.to_datetime(end)-pd.to_datetime(start)).days,1)
-
-        avg_energy = total_energy/days
-        avg_carbon = total_carbon/days
-
-        trend = df.groupby("date",as_index=False).sum()
-
-        fig = go.Figure()
+        fig=go.Figure()
 
         fig.add_bar(x=trend["date"],y=trend["energy_kwh"],name="Energy")
 
-        fig.add_scatter(
-            x=trend["date"],
-            y=trend["carbon_kgco2"],
-            yaxis="y2",
-            name="Carbon"
-        )
+        fig.add_scatter(x=trend["date"],y=trend["carbon_kgco2"],yaxis="y2",name="Carbon")
 
-        fig.update_layout(
-            yaxis2=dict(overlaying="y",side="right"),
-            template="plotly_white"
-        )
+        fig.update_layout(yaxis2=dict(overlaying="y",side="right"))
+
+        energy_fig=go.Figure(data=[go.Pie(labels=energy_pie.index,values=energy_pie)])
+
+        carbon_fig=go.Figure(data=[go.Pie(labels=carbon_pie.index,values=carbon_pie)])
 
         return html.Div([
 
-            html.H3(system["name"]),
-            html.P(system["scope"],style={"fontWeight":"bold","color":"#E67E22"}),
+        html.Div(style={"display":"flex","gap":"20px"},children=[
 
-            html.Div(
-                style={"display":"flex","gap":"20px","marginBottom":"20px"},
-                children=[
-                    kpi_card("Total Energy",total_energy,"kWh"),
-                    kpi_card("Total Carbon",total_carbon,"kgCO₂","#E67E22"),
-                    kpi_card("Avg Daily Energy",avg_energy,"kWh/day","#27AE60"),
-                    kpi_card("Avg Daily Carbon",avg_carbon,"kgCO₂/day","#8E44AD"),
-                ]
-            ),
+        kpi_card("Total Energy",total_energy,"kWh"),
+        kpi_card("Total Carbon",total_carbon,"kgCO₂")
 
-            html.Div(
-                style={"background":"white","padding":"15px","borderRadius":"12px"},
-                children=[dcc.Graph(figure=fig)]
-            )
+        ]),
 
-        ]), active_view
+        dcc.Graph(figure=fig),
 
-    return html.Div(), active_view
+        html.Div(style={"display":"flex"},children=[
+
+        dcc.Graph(figure=energy_fig,style={"width":"50%"}),
+
+        dcc.Graph(figure=carbon_fig,style={"width":"50%"})
+
+        ])
+
+        ]),active_view
+
+# =================================================
+# SYSTEM PAGE
+# =================================================
+
+    system=systems.get(active_view)
+
+    if system:
+
+        df=fetch_data(start,end,[system["name"]],agg)
+
+        trend=df.groupby("date",as_index=False).sum()
+
+        fig=go.Figure()
+
+        fig.add_bar(x=trend["date"],y=trend["energy_kwh"])
+
+        fig.add_scatter(x=trend["date"],y=trend["carbon_kgco2"],yaxis="y2")
+
+        fig.update_layout(yaxis2=dict(overlaying="y",side="right"))
+
+        return html.Div([
+
+        html.H3(system["name"]),
+
+        dcc.Graph(figure=fig)
+
+        ]),active_view
+
+    return html.Div(),active_view
 
 # =================================================
 # RUN APP
 # =================================================
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT",8050))
+if __name__=="__main__":
+
+    port=int(os.environ.get("PORT",8050))
+
     app.run_server(host="0.0.0.0",port=port)
