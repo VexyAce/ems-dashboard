@@ -19,6 +19,7 @@ DB_PASSWORD = "Limlimlimwee2#"
 
 engine = create_engine(
     f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    connect_args={"connect_timeout": 3}
 )
 
 CARBON_FACTOR = 0.408
@@ -68,7 +69,8 @@ try:
     )
     MIN_DATE = bounds.loc[0, "min_d"]
     MAX_DATE = bounds.loc[0, "max_d"]
-except:
+except Exception as e:
+    print("Database not available:", e)
     MIN_DATE = "2024-01-01"
     MAX_DATE = "2024-12-31"
 
