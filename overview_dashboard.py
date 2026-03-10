@@ -107,16 +107,28 @@ def fetch_data(start_date, end_date, system_list, agg_level):
 # =================================================
 # AUTOMATED DAILY EXPORT
 # =================================================
-
 def automated_daily_export():
 
     today = datetime.today().date()
+
     df = fetch_data(today, today, ALL_SYSTEM_NAMES, "daily")
 
-    filename = f"ems_daily_report_{today}.csv"
-    df.to_csv(filename, index=False)
+    if df.empty:
+        print("No data available for daily report.")
+        return
 
-    print(f"Daily EMS report exported: {filename}")
+    df["report_date"] = today
+
+    df = df[["report_date", "system", "energy_kwh", "carbon_kgco2"]]
+
+    df.to_sql(
+        "daily_reports",
+        engine,
+        if_exists="append",
+        index=False
+    )
+
+    print(f"Daily report stored in database for {today}")
 
 schedule.every().day.at("23:59").do(automated_daily_export)
 
