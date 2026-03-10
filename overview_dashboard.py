@@ -12,7 +12,7 @@ from datetime import datetime
 # SUPABASE DATABASE CONFIG
 # =================================================
 
-DATABASE_URL = "postgresql://postgres:Limlimlimwee2%23@db.vgffglhsnxfdygtygepu.supabase.co:5432/postgres?sslmode=require"
+DATABASE_URL = "postgresql://postgres.vgffglhsnxdfygtgyepu:Limlimlimwee2@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
 
 engine = create_engine(
     DATABASE_URL,
