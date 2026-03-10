@@ -11,15 +11,11 @@ from datetime import datetime
 # =================================================
 # DATABASE CONFIG
 # =================================================
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_NAME = "ems_db"
-DB_USER = "postgres"
-DB_PASSWORD = "Limlimlimwee2#"
+DATABASE_URL = "postgresql://postgres:Limlimlimwee2#@db.vgffglhsnxdfygtgyepu.supabase.co:5432/postgres"
 
 engine = create_engine(
-    f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    connect_args={"connect_timeout": 3}
+    DATABASE_URL,
+    connect_args={"connect_timeout": 5}
 )
 
 CARBON_FACTOR = 0.408
