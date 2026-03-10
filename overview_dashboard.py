@@ -124,6 +124,7 @@ threading.Thread(target=run_scheduler, daemon=True).start()
 # DASH APP
 # =================================================
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
+server = app.server
 app.title = "SIT Energy Management System"
 
 # =================================================
@@ -334,67 +335,28 @@ def render_page(_, *args):
 
         return html.Div([
 
-    html.H3("EMS Overview & Carbon Reporting"),
-
-    html.Div(
-        style={"display": "flex", "gap": "20px", "marginBottom": "20px"},
-        children=[
-            kpi_card("Total Energy", total_energy, "kWh"),
-            kpi_card("Total Carbon", total_carbon, "kgCO₂", "#E67E22"),
-            kpi_card("Avg Daily Energy", avg_energy, "kWh/day", "#27AE60"),
-            kpi_card("Avg Daily Carbon", avg_carbon, "kgCO₂/day", "#8E44AD"),
-            kpi_card("Top Energy System", top_system["energy_kwh"], top_system["system"], "#C0392B"),
-            kpi_card("Carbon Reduction", carbon_reduction, "kgCO₂", "#16A085"),
-        ]
-    ),
-
-    html.Div(
-        style={"background": "white", "padding": "15px", "borderRadius": "12px", "marginBottom": "20px"},
-        children=[dcc.Graph(figure=fig)]
-    ),
-
-    html.Div(
-        style={"display": "flex", "gap": "20px"},
-        children=[
+            html.H3("EMS Overview & Carbon Reporting"),
 
             html.Div(
-                style={"flex": "1", "background": "white", "padding": "15px", "borderRadius": "12px"},
+                style={"display": "flex", "gap": "20px", "marginBottom": "20px"},
                 children=[
-                    dcc.Graph(
-                        figure=go.Figure(
-                            data=[
-                                go.Pie(
-                                    labels=energy_pie["system"],
-                                    values=energy_pie["energy_kwh"],
-                                    hole=0.45
-                                )
-                            ]
-                        )
-                    )
+
+                    kpi_card("Total Energy", total_energy, "kWh"),
+                    kpi_card("Total Carbon", total_carbon, "kgCO₂", "#E67E22"),
+                    kpi_card("Avg Daily Energy", avg_energy, "kWh/day", "#27AE60"),
+                    kpi_card("Avg Daily Carbon", avg_carbon, "kgCO₂/day", "#8E44AD"),
+                    kpi_card("Top Energy System", top_system["energy_kwh"], top_system["system"], "#C0392B"),
+                    kpi_card("Carbon Reduction", carbon_reduction, "kgCO₂", "#16A085"),
+
                 ]
             ),
 
             html.Div(
-                style={"flex": "1", "background": "white", "padding": "15px", "borderRadius": "12px"},
-                children=[
-                    dcc.Graph(
-                        figure=go.Figure(
-                            data=[
-                                go.Pie(
-                                    labels=carbon_pie["system"],
-                                    values=carbon_pie["carbon_kgco2"],
-                                    hole=0.45
-                                )
-                            ]
-                        )
-                    )
-                ]
+                style={"background": "white", "padding": "15px", "borderRadius": "12px"},
+                children=[dcc.Graph(figure=fig)]
             )
 
-        ]
-    )
-
-]), active_view
+        ]), active_view
 
     # ================= SINGLE SYSTEM =================
     system = systems[active_view]
