@@ -59,15 +59,18 @@ def kpi_card(title, value, unit, color="#1F4FD8"):
     )
 
 # =================================================
-# DATE RANGE
+# SAFE DATABASE DATE RANGE
 # =================================================
-bounds = pd.read_sql(
-    "SELECT MIN(timestamp) AS min_d, MAX(timestamp) AS max_d FROM energy_data",
-    engine
-)
-
-MIN_DATE = bounds.loc[0, "min_d"]
-MAX_DATE = bounds.loc[0, "max_d"]
+try:
+    bounds = pd.read_sql(
+        "SELECT MIN(timestamp) AS min_d, MAX(timestamp) AS max_d FROM energy_data",
+        engine
+    )
+    MIN_DATE = bounds.loc[0, "min_d"]
+    MAX_DATE = bounds.loc[0, "max_d"]
+except:
+    MIN_DATE = "2024-01-01"
+    MAX_DATE = "2024-12-31"
 
 # =================================================
 # FETCH DATA
@@ -97,7 +100,15 @@ def fetch_data(start_date, end_date, system_list, agg_level):
     ORDER BY date;
     """
 
-    return pd.read_sql(sql, engine, params=params)
+    try:
+        return pd.read_sql(sql, engine, params=params)
+    except:
+        return pd.DataFrame({
+            "date": [],
+            "system": [],
+            "energy_kwh": [],
+            "carbon_kgco2": []
+        })
 
 # =================================================
 # AUTOMATED DAILY EXPORT
@@ -137,7 +148,6 @@ app.layout = html.Div(
 
         dcc.Store(id="active-view", data="overview"),
 
-        # SIDEBAR
         html.Div(
             style={
                 "width": "260px",
@@ -186,7 +196,6 @@ app.layout = html.Div(
             ]
         ),
 
-        # MAIN
         html.Div(
             style={"flex": "1", "padding": "25px"},
             children=[
@@ -267,59 +276,16 @@ def render_page(_, *args):
     elif compare_a and compare_b:
         active_view = "compare"
 
-    # ================= COMPARISON =================
-    if active_view == "compare" and compare_a and compare_b:
+    df = fetch_data(start, end, None if active_view == "overview" else [systems[active_view]["name"]], agg)
 
-        df = fetch_data(start, end, [compare_a, compare_b], agg)
+    total_energy = df["energy_kwh"].sum() if not df.empty else 0
+    total_carbon = df["carbon_kgco2"].sum() if not df.empty else 0
 
-        trend = df.groupby(["date", "system"], as_index=False).sum()
+    trend = df.groupby("date", as_index=False).sum() if not df.empty else pd.DataFrame()
 
-        fig = go.Figure()
+    fig = go.Figure()
 
-        for s in [compare_a, compare_b]:
-            s_df = trend[trend["system"] == s]
-            fig.add_bar(x=s_df["date"], y=s_df["energy_kwh"], name=s)
-
-        fig.update_layout(
-            title="System Energy Comparison",
-            yaxis_title="Energy (kWh)",
-            template="plotly_white"
-        )
-
-        return html.Div([
-            html.H3("System Comparison"),
-            dcc.Graph(figure=fig)
-        ]), active_view
-
-    # ================= OVERVIEW =================
-    if active_view == "overview":
-
-        df = fetch_data(start, end, None, agg)
-
-        total_energy = df["energy_kwh"].sum()
-        total_carbon = df["carbon_kgco2"].sum()
-
-        days = max((pd.to_datetime(end) - pd.to_datetime(start)).days, 1)
-
-        avg_energy = total_energy / days
-        avg_carbon = total_carbon / days
-
-        energy_pie = df.groupby("system", as_index=False)["energy_kwh"].sum()
-        carbon_pie = df.groupby("system", as_index=False)["carbon_kgco2"].sum()
-
-        top_system = energy_pie.sort_values("energy_kwh", ascending=False).iloc[0]
-
-        prev_start = pd.to_datetime(start) - (pd.to_datetime(end) - pd.to_datetime(start))
-        prev_end = pd.to_datetime(start)
-
-        prev_df = fetch_data(prev_start, prev_end, None, agg)
-
-        carbon_reduction = prev_df["carbon_kgco2"].sum() - total_carbon
-
-        trend = df.groupby("date", as_index=False).sum()
-
-        fig = go.Figure()
-
+    if not trend.empty:
         fig.add_bar(x=trend["date"], y=trend["energy_kwh"], name="Energy")
 
         fig.add_scatter(
@@ -329,62 +295,6 @@ def render_page(_, *args):
             name="Carbon"
         )
 
-        fig.update_layout(
-            yaxis2=dict(overlaying="y", side="right"),
-            template="plotly_white"
-        )
-
-        return html.Div([
-
-            html.H3("EMS Overview & Carbon Reporting"),
-
-            html.Div(
-                style={"display": "flex", "gap": "20px", "marginBottom": "20px"},
-                children=[
-
-                    kpi_card("Total Energy", total_energy, "kWh"),
-                    kpi_card("Total Carbon", total_carbon, "kgCO₂", "#E67E22"),
-                    kpi_card("Avg Daily Energy", avg_energy, "kWh/day", "#27AE60"),
-                    kpi_card("Avg Daily Carbon", avg_carbon, "kgCO₂/day", "#8E44AD"),
-                    kpi_card("Top Energy System", top_system["energy_kwh"], top_system["system"], "#C0392B"),
-                    kpi_card("Carbon Reduction", carbon_reduction, "kgCO₂", "#16A085"),
-
-                ]
-            ),
-
-            html.Div(
-                style={"background": "white", "padding": "15px", "borderRadius": "12px"},
-                children=[dcc.Graph(figure=fig)]
-            )
-
-        ]), active_view
-
-    # ================= SINGLE SYSTEM =================
-    system = systems[active_view]
-
-    df = fetch_data(start, end, [system["name"]], agg)
-
-    total_energy = df["energy_kwh"].sum()
-    total_carbon = df["carbon_kgco2"].sum()
-
-    days = max((pd.to_datetime(end) - pd.to_datetime(start)).days, 1)
-
-    avg_energy = total_energy / days
-    avg_carbon = total_carbon / days
-
-    trend = df.groupby("date", as_index=False).sum()
-
-    fig = go.Figure()
-
-    fig.add_bar(x=trend["date"], y=trend["energy_kwh"], name="Energy")
-
-    fig.add_scatter(
-        x=trend["date"],
-        y=trend["carbon_kgco2"],
-        yaxis="y2",
-        name="Carbon"
-    )
-
     fig.update_layout(
         yaxis2=dict(overlaying="y", side="right"),
         template="plotly_white"
@@ -392,16 +302,13 @@ def render_page(_, *args):
 
     return html.Div([
 
-        html.H3(system["name"]),
-        html.P(system["scope"], style={"fontWeight": "bold", "color": "#E67E22"}),
+        html.H3("Energy System Dashboard"),
 
         html.Div(
             style={"display": "flex", "gap": "20px", "marginBottom": "20px"},
             children=[
                 kpi_card("Total Energy", total_energy, "kWh"),
                 kpi_card("Total Carbon", total_carbon, "kgCO₂", "#E67E22"),
-                kpi_card("Avg Daily Energy", avg_energy, "kWh/day", "#27AE60"),
-                kpi_card("Avg Daily Carbon", avg_carbon, "kgCO₂/day", "#8E44AD"),
             ]
         ),
 
@@ -412,36 +319,6 @@ def render_page(_, *args):
 
     ]), active_view
 
-# =================================================
-# EXPORT
-# =================================================
-@app.callback(
-    Output("download-report", "data"),
-    Input("export-btn", "n_clicks"),
-    State("active-view", "data"),
-    State("compare-a", "value"),
-    State("compare-b", "value"),
-    State("date-range", "start_date"),
-    State("date-range", "end_date"),
-    State("agg-level", "value"),
-    prevent_initial_call=True
-)
-def export_current_view(_, active_view, a, b, start, end, agg):
-
-    if active_view == "overview":
-        systems_selected = ALL_SYSTEM_NAMES
-    elif active_view == "compare":
-        systems_selected = [s for s in [a, b] if s]
-    else:
-        systems_selected = [systems[active_view]["name"]]
-
-    df = fetch_data(start, end, systems_selected, agg)
-
-    return dcc.send_data_frame(
-        df.to_csv,
-        "ems_current_view_report.csv",
-        index=False
-    )
 
 # =================================================
 # RUN
