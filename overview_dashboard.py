@@ -55,7 +55,8 @@ def kpi_card(title, value, unit, color="#1F4FD8"):
         },
         children=[
             html.P(title, style={"margin": "0", "color": "#777"}),
-            html.H2(f"{value:,.0f}", style={"margin": "5px 0", "color": color}),
+            html.H2(f"{value:,.0f}" if isinstance(value, (int, float)) else value,
+                    style={"margin": "5px 0", "color": color}),
             html.P(unit, style={"margin": "0", "color": "#999"}),
         ],
     )
@@ -295,6 +296,17 @@ def render_page(_, *args):
         energy_pie = df.groupby("system", as_index=False)["energy_kwh"].sum()
         carbon_pie = df.groupby("system", as_index=False)["carbon_kgco2"].sum()
 
+        # Top system
+        top_system = energy_pie.sort_values("energy_kwh", ascending=False).iloc[0]
+
+        # Carbon reduction calculation
+        prev_start = pd.to_datetime(start) - (pd.to_datetime(end) - pd.to_datetime(start))
+        prev_end = pd.to_datetime(start)
+
+        prev_df = fetch_data(prev_start, prev_end, None, agg)
+
+        carbon_reduction = prev_df["carbon_kgco2"].sum() - total_carbon
+
         trend = df.groupby("date", as_index=False).sum()
 
         trend_fig = go.Figure()
@@ -314,26 +326,12 @@ def render_page(_, *args):
         )
 
         energy_pie_fig = go.Figure(
-            data=[go.Pie(
-                labels=energy_pie["system"],
-                values=energy_pie["energy_kwh"],
-                hole=0.3,
-                textinfo="label+percent"
-            )]
+            data=[go.Pie(labels=energy_pie["system"], values=energy_pie["energy_kwh"], hole=0.3)]
         )
-
-        energy_pie_fig.update_layout(title="Energy Distribution by System")
 
         carbon_pie_fig = go.Figure(
-            data=[go.Pie(
-                labels=carbon_pie["system"],
-                values=carbon_pie["carbon_kgco2"],
-                hole=0.3,
-                textinfo="label+percent"
-            )]
+            data=[go.Pie(labels=carbon_pie["system"], values=carbon_pie["carbon_kgco2"], hole=0.3)]
         )
-
-        carbon_pie_fig.update_layout(title="Carbon Distribution by System")
 
         return html.Div([
 
@@ -346,6 +344,8 @@ def render_page(_, *args):
                     kpi_card("Total Carbon", total_carbon, "kgCO₂", "#E67E22"),
                     kpi_card("Avg Daily Energy", avg_energy, "kWh/day", "#27AE60"),
                     kpi_card("Avg Daily Carbon", avg_carbon, "kgCO₂/day", "#8E44AD"),
+                    kpi_card("Top Energy System", top_system["system"], "Highest Consumption", "#C0392B"),
+                    kpi_card("Carbon Reduction", carbon_reduction, "kgCO₂", "#16A085"),
                 ]
             ),
 
