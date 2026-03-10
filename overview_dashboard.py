@@ -124,6 +124,7 @@ threading.Thread(target=run_scheduler, daemon=True).start()
 # DASH APP
 # =================================================
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
+server = app.server
 app.title = "SIT Energy Management System"
 
 # =================================================
