@@ -8,11 +8,11 @@ import threading
 import time
 from datetime import datetime
 
-
 # =================================================
 # SUPABASE DATABASE CONFIG
 # =================================================
-DATABASE_URL = "postgresql://postgres:Limlimlimwee2%23@db.vgffglhsnxfdygtygepu.supabase.co:5432/postgres"
+
+DATABASE_URL = "postgresql://postgres:Limlimlimwee2%23@db.vgffglhsnxfdygtygepu.supabase.co:5432/postgres?sslmode=require"
 
 engine = create_engine(
     DATABASE_URL,
