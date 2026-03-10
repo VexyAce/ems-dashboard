@@ -275,8 +275,31 @@ def render_page(_, *args):
     elif compare_a and compare_b:
         active_view = "compare"
 
-    # ================= OVERVIEW =================
+    # ================= COMPARISON =================
+    if active_view == "compare" and compare_a and compare_b:
 
+        df = fetch_data(start, end, [compare_a, compare_b], agg)
+
+        trend = df.groupby(["date", "system"], as_index=False).sum()
+
+        fig = go.Figure()
+
+        for s in [compare_a, compare_b]:
+            s_df = trend[trend["system"] == s]
+            fig.add_bar(x=s_df["date"], y=s_df["energy_kwh"], name=s)
+
+        fig.update_layout(
+            title="System Energy Comparison",
+            yaxis_title="Energy (kWh)",
+            template="plotly_white"
+        )
+
+        return html.Div([
+            html.H3("System Comparison"),
+            dcc.Graph(figure=fig)
+        ]), active_view
+
+    # ================= OVERVIEW =================
     if active_view == "overview":
 
         df = fetch_data(start, end, None, agg)
@@ -294,9 +317,16 @@ def render_page(_, *args):
 
         top_system = energy_pie.sort_values("energy_kwh", ascending=False).iloc[0]
 
+        prev_start = pd.to_datetime(start) - (pd.to_datetime(end) - pd.to_datetime(start))
+        prev_end = pd.to_datetime(start)
+
+        prev_df = fetch_data(prev_start, prev_end, None, agg)
+
+        carbon_reduction = prev_df["carbon_kgco2"].sum() - total_carbon
+
         trend = df.groupby("date", as_index=False).sum()
 
-        # Trend chart
+        # ===== Trend Chart =====
         fig = go.Figure()
 
         fig.add_bar(x=trend["date"], y=trend["energy_kwh"], name="Energy")
@@ -313,7 +343,8 @@ def render_page(_, *args):
             template="plotly_white"
         )
 
-        # Energy Pie
+        # ===== Pie Charts =====
+
         energy_pie_fig = go.Figure(
             data=[go.Pie(
                 labels=energy_pie["system"],
@@ -324,7 +355,6 @@ def render_page(_, *args):
 
         energy_pie_fig.update_layout(title="Energy Consumption by System")
 
-        # Carbon Pie
         carbon_pie_fig = go.Figure(
             data=[go.Pie(
                 labels=carbon_pie["system"],
@@ -347,6 +377,7 @@ def render_page(_, *args):
                     kpi_card("Avg Daily Energy", avg_energy, "kWh/day", "#27AE60"),
                     kpi_card("Avg Daily Carbon", avg_carbon, "kgCO₂/day", "#8E44AD"),
                     kpi_card("Top Energy System", top_system["energy_kwh"], top_system["system"], "#C0392B"),
+                    kpi_card("Carbon Reduction", carbon_reduction, "kgCO₂", "#16A085"),
                 ]
             ),
 
@@ -370,10 +401,47 @@ def render_page(_, *args):
                         style={"flex": "1", "background": "white", "padding": "15px", "borderRadius": "12px"},
                         children=[dcc.Graph(figure=carbon_pie_fig)]
                     )
+
                 ]
             )
 
         ]), active_view
+
+    # ================= SINGLE SYSTEM =================
+
+    system = systems[active_view]
+
+    df = fetch_data(start, end, [system["name"]], agg)
+
+    trend = df.groupby("date", as_index=False).sum()
+
+    fig = go.Figure()
+
+    fig.add_bar(x=trend["date"], y=trend["energy_kwh"], name="Energy")
+
+    fig.add_scatter(
+        x=trend["date"],
+        y=trend["carbon_kgco2"],
+        yaxis="y2",
+        name="Carbon"
+    )
+
+    fig.update_layout(
+        yaxis2=dict(overlaying="y", side="right"),
+        template="plotly_white"
+    )
+
+    return html.Div([
+
+        html.H3(system["name"]),
+        html.P(system["scope"], style={"fontWeight": "bold", "color": "#E67E22"}),
+
+        html.Div(
+            style={"background": "white", "padding": "15px", "borderRadius": "12px"},
+            children=[dcc.Graph(figure=fig)]
+        )
+
+    ]), active_view
 
 # =================================================
 # EXPORT
