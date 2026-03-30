@@ -9,6 +9,8 @@ import time
 from datetime import datetime
 import os
 import random   # ✅ ADDED
+from datetime import datetime
+import pytz
 
 # =================================================
 # SUPABASE DATABASE CONFIG
@@ -139,7 +141,8 @@ def fetch_data(start_date, end_date, system_list, agg_level):
 # =================================================
 def automated_daily_export():
 
-    today = datetime.today().date()
+    sg = pytz.timezone("Asia/Singapore")
+    today = datetime.now(sg).date()
 
     start = datetime.combine(today, datetime.min.time())
     end = datetime.combine(today, datetime.max.time())
