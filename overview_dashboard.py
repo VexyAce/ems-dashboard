@@ -141,7 +141,10 @@ def automated_daily_export():
 
     today = datetime.today().date()
 
-    df = fetch_data(today, today, ALL_SYSTEM_NAMES, "daily")
+    start = datetime.combine(today, datetime.min.time())
+    end = datetime.combine(today, datetime.max.time())
+
+    df = fetch_data(start, end, ALL_SYSTEM_NAMES, "daily")
 
     if df.empty:
         print("No data available for daily report.")
