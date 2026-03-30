@@ -7,10 +7,9 @@ import schedule
 import threading
 import time
 from datetime import datetime
+from datetime import timedelta
 import os
 import random   # ✅ ADDED
-from datetime import datetime
-import pytz
 
 # =================================================
 # SUPABASE DATABASE CONFIG
@@ -141,13 +140,9 @@ def fetch_data(start_date, end_date, system_list, agg_level):
 # =================================================
 def automated_daily_export():
 
-    sg = pytz.timezone("Asia/Singapore")
-    today = datetime.now(sg).date()
+    today = (datetime.utcnow() + timedelta(hours=8)).date()
 
-    start = datetime.combine(today, datetime.min.time())
-    end = datetime.combine(today, datetime.max.time())
-
-    df = fetch_data(start, end, ALL_SYSTEM_NAMES, "daily")
+    df = fetch_data(today, today, ALL_SYSTEM_NAMES, "daily")
 
     if df.empty:
         print("No data available for daily report.")
@@ -333,6 +328,7 @@ def render_page(_, *args):
         active_view = "compare"
 
     # ================= COMPARISON =================
+
     if active_view == "compare" and compare_a and compare_b:
 
         df = fetch_data(start,end,[compare_a,compare_b],agg)
@@ -342,6 +338,7 @@ def render_page(_, *args):
         fig = go.Figure()
 
         for s in [compare_a,compare_b]:
+
             s_df = trend[trend["system"]==s]
 
             fig.add_bar(
@@ -357,28 +354,9 @@ def render_page(_, *args):
             template="plotly_white"
         )
 
-        # KPI
-        total_energy_a = df[df["system"]==compare_a]["energy_kwh"].sum()
-        total_energy_b = df[df["system"]==compare_b]["energy_kwh"].sum()
-
-        total_carbon_a = df[df["system"]==compare_a]["carbon_kgco2"].sum()
-        total_carbon_b = df[df["system"]==compare_b]["carbon_kgco2"].sum()
-
-        higher_system = compare_a if total_energy_a > total_energy_b else compare_b
-
         return html.Div([
-            html.H3("System Comparison"),
 
-            html.Div(
-                style={"display":"flex","gap":"20px","marginBottom":"20px"},
-                children=[
-                    kpi_card(f"{compare_a} Energy", total_energy_a, "kWh"),
-                    kpi_card(f"{compare_b} Energy", total_energy_b, "kWh"),
-                    kpi_card(f"{compare_a} Carbon", total_carbon_a, "kgCO₂", "#E67E22"),
-                    kpi_card(f"{compare_b} Carbon", total_carbon_b, "kgCO₂", "#E67E22"),
-                    kpi_card("Higher Consumption", higher_system, "System", "#C0392B"),
-                ]
-            ),
+            html.H3("System Comparison"),
 
             html.Div(
                 style={"background":"white","padding":"15px","borderRadius":"12px"},
