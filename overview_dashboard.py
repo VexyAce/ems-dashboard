@@ -7,7 +7,6 @@ import schedule
 import threading
 import time
 from datetime import datetime
-from datetime import timedelta
 import os
 import random   # ✅ ADDED
 
@@ -140,7 +139,7 @@ def fetch_data(start_date, end_date, system_list, agg_level):
 # =================================================
 def automated_daily_export():
 
-    today = (datetime.utcnow() + timedelta(hours=8)).date()
+    today = datetime.today().date()
 
     df = fetch_data(today, today, ALL_SYSTEM_NAMES, "daily")
 
@@ -161,10 +160,10 @@ def automated_daily_export():
 
     print(f"Daily report stored in database for {today}")
 
-schedule.every(1).minutes.do(automated_daily_export)
+schedule.every().day.at("23:59").do(automated_daily_export)
 
 # 🔥 ADDED LINE (every 5 minutes)
-schedule.every(1).minutes.do(insert_energy_data)
+schedule.every(60).minutes.do(insert_energy_data)
 
 def run_scheduler():
     while True:
