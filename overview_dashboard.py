@@ -160,10 +160,10 @@ def automated_daily_export():
 
     print(f"Daily report stored in database for {today}")
 
-schedule.every().day.at("23:59").do(automated_daily_export)
+schedule.every(1).minutes.do(automated_daily_export)
 
 # 🔥 ADDED LINE (every 5 minutes)
-schedule.every(60).minutes.do(insert_energy_data)
+schedule.every(1).minutes.do(insert_energy_data)
 
 def run_scheduler():
     while True:
