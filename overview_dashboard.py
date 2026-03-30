@@ -8,7 +8,7 @@ import threading
 import time
 from datetime import datetime
 import os
-import random   # ✅ ADDED
+import random   
 
 # =================================================
 # SUPABASE DATABASE CONFIG
@@ -41,7 +41,7 @@ SYSTEM_OPTIONS = [{"label": v["label"], "value": v["name"]} for v in systems.val
 ALL_SYSTEM_NAMES = [v["name"] for v in systems.values()]
 
 # =================================================
-# 🔥 INSERT DATA EVERY 5 MINUTES (ADDED)
+# INSERT DATA 
 # =================================================
 
 def insert_energy_data():
@@ -162,8 +162,8 @@ def automated_daily_export():
 
 schedule.every().day.at("23:59").do(automated_daily_export)
 
-# 🔥 ADDED LINE (every 5 minutes)
-schedule.every(60).minutes.do(insert_energy_data)
+
+schedule.every(14).minutes.do(insert_energy_data)
 
 def run_scheduler():
     while True:
