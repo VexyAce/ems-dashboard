@@ -26,15 +26,15 @@ CARBON_FACTOR = 0.408
 # =================================================
 
 systems = {
-    "bss": {"label": "Boiler & Steam System (BSS)", "name": "Boiler & Steam System (BSS)", "scope": "Scope 1 – Direct Emissions"},
-    "hps": {"label": "Heat Pump System (HPS)", "name": "Heat Pump System (HPS)", "scope": "Scope 2 – Electricity"},
-    "ps": {"label": "Pump System (PS)", "name": "Pump System (PS)", "scope": "Scope 2 – Electricity"},
-    "fs": {"label": "Fan System (FS)", "name": "Fan System (FS)", "scope": "Scope 2 – Electricity"},
-    "ac": {"label": "Air Conditioning & Mechanical Ventilation System (ACMVS)", "name": "Air Conditioning & Mechanical Ventilation System (ACMVS)", "scope": "Scope 2 – Electricity"},
-    "ls": {"label": "Lighting System (LS)", "name": "Lighting System (LS)", "scope": "Scope 2 – Electricity"},
+    "bss": {"label": "Boiler & Steam System (BSS)", "name": "Boiler & Steam System (BSS)", "acronym": "BSS", "scope": "Scope 1 – Direct Emissions"},
+    "hps": {"label": "Heat Pump System (HPS)", "name": "Heat Pump System (HPS)", "acronym": "HPS", "scope": "Scope 2 – Electricity"},
+    "ps": {"label": "Pump System (PS)", "name": "Pump System (PS)", "acronym": "PS", "scope": "Scope 2 – Electricity"},
+    "fs": {"label": "Fan System (FS)", "name": "Fan System (FS)", "acronym": "FS", "scope": "Scope 2 – Electricity"},
+    "ac": {"label": "Air Conditioning & Mechanical Ventilation System (ACMVS)", "name": "Air Conditioning & Mechanical Ventilation System (ACMVS)", "acronym": "ACMVS", "scope": "Scope 2 – Electricity"},
+    "ls": {"label": "Lighting System (LS)", "name": "Lighting System (LS)", "acronym": "LS", "scope": "Scope 2 – Electricity"},
 }
 
-SYSTEM_OPTIONS = [{"label": v["label"], "value": v["name"]} for v in systems.values()]
+SYSTEM_OPTIONS = [{"label": v["acronym"], "value": v["name"]} for v in systems.values()]
 ALL_SYSTEM_NAMES = [v["name"] for v in systems.values()]
 
 # =================================================
