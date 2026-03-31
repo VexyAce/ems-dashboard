@@ -508,23 +508,33 @@ def render_page(_, *args):
                 labels=energy_pie["system"],
                 values=energy_pie["energy_kwh"],
                 hole=0.5,
-                textinfo="percent+label",
+                textinfo="percent",
+                textposition="inside",   # only % inside
                 hoverinfo="label+value+percent",
                 pull=[0.03]*len(energy_pie),
             )]
         )
-
         carbon_pie_fig = go.Figure(
             data=[go.Pie(
                 labels=carbon_pie["system"],
                 values=carbon_pie["carbon_kgco2"],
                 hole=0.5,
-                textinfo="percent+label",
+                textinfo="percent",
+                textposition="inside",   # only % inside
                 hoverinfo="label+value+percent",
                 pull=[0.03]*len(carbon_pie),
             )]
         )
 
+        energy_pie_fig.update_layout(
+            showlegend=True,
+            margin=dict(t=30, b=20),
+        )
+        carbon_pie_fig.update_layout(
+            showlegend=True,
+            margin=dict(t=30, b=20),
+        )
+        
         return html.Div([
 
             html.H3("EMS Overview & Carbon Reporting"),
