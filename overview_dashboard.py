@@ -10,9 +10,6 @@ from datetime import datetime
 import os
 import random   
 
-# =================================================
-# SUPABASE DATABASE CONFIG
-# =================================================
 
 DATABASE_URL = "postgresql://postgres.vgffglhsnxdfygtgyepu:Limlimlimwee2@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
 
