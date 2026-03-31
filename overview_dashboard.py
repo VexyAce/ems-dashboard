@@ -24,10 +24,6 @@ engine = create_engine(
 
 CARBON_FACTOR = 0.408
 
-# =================================================
-# SYSTEM DEFINITIONS
-# =================================================
-
 systems = {
     "bss": {"label": "Boiler & Steam", "name": "Boiler & Steam System (BSS)", "scope": "Scope 1 – Direct Emissions"},
     "hps": {"label": "Heat Pump", "name": "Heat Pump System (HPS)", "scope": "Scope 2 – Electricity"},
