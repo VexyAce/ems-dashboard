@@ -679,6 +679,40 @@ def render_page(_, *args):
 
     return html.Div(), active_view
 
+@app.callback(
+    Output("download-report", "data"),
+    Input("export-btn", "n_clicks"),
+    State("date-range", "start_date"),
+    State("date-range", "end_date"),
+    State("agg-level", "value"),
+    State("active-view", "data"),
+    prevent_initial_call=True
+)
+def export_csv(n_clicks, start, end, agg, active_view):
+
+    # Get data based on current view
+    if active_view == "overview":
+        df = fetch_data(start, end, None, agg)
+
+    elif active_view == "compare":
+        # export both systems
+        df = fetch_data(start, end, ALL_SYSTEM_NAMES, agg)
+
+    elif active_view in systems:
+        system_name = systems[active_view]["name"]
+        df = fetch_data(start, end, [system_name], agg)
+
+    else:
+        return None
+
+    if df.empty:
+        return None
+
+    return dcc.send_data_frame(
+        df.to_csv,
+        f"EMS_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        index=False
+    )
 # =================================================
 # RUN APP
 # =================================================
