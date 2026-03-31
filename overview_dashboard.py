@@ -75,13 +75,16 @@ def insert_energy_data():
 
 def kpi_card(title, value, unit, color="#1F4FD8"):
     return html.Div(
+        className="kpi-card",
         style={
             "flex": "1",
             "background": "white",
-            "padding": "18px",
-            "borderRadius": "12px",
-            "boxShadow": "0 4px 10px rgba(0,0,0,0.08)",
+            "padding": "20px",
+            "borderRadius": "16px",
+            "boxShadow": "0 6px 18px rgba(0,0,0,0.08)",
             "textAlign": "center",
+            "transition": "all 0.2s ease",
+            "cursor": "pointer"
         },
         children=[
             html.P(title, style={"margin": "0", "color": "#777"}),
@@ -179,7 +182,49 @@ threading.Thread(target=run_scheduler, daemon=True).start()
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 server = app.server
 app.title = "SIT Energy Management System"
+# ================================
+# ADD THIS AFTER app = dash.Dash(...)
+# ================================
+app.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>EMS Dashboard</title>
+        {%favicon%}
+        {%css%}
+        <style>
+            body {
+                background-color: #F4F6FB;
+            }
 
+            .graph-card {
+                transition: transform 0.25s ease, box-shadow 0.25s ease;
+                cursor: pointer;
+            }
+
+            .graph-card:hover {
+                transform: scale(1.04);
+                box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+                z-index: 10;
+            }
+
+            .kpi-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            }
+        </style>
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
 # =================================================
 # LAYOUT
 # =================================================
@@ -334,7 +379,13 @@ def render_page(_, *args):
         trend = df.groupby(["date","system"],as_index=False).sum()
 
         fig = go.Figure()
-
+        fig.update_layout(
+            template="plotly_white",
+            hovermode="x unified",
+            transition=dict(duration=500, easing="cubic-in-out"),
+            margin=dict(l=20, r=20, t=40, b=20),
+            font=dict(size=14),
+        )
         for s in [compare_a,compare_b]:
             s_df = trend[trend["system"]==s]
 
@@ -375,8 +426,20 @@ def render_page(_, *args):
             ),
 
             html.Div(
-                style={"background":"white","padding":"15px","borderRadius":"12px"},
-                children=[dcc.Graph(figure=fig)]
+                className="graph-card",
+                style={
+                    "background": "white",
+                    "padding": "15px",
+                    "borderRadius": "16px",
+                    "boxShadow": "0 6px 18px rgba(0,0,0,0.08)",
+                },
+                children=[
+                    dcc.Graph(
+                        figure=fig,
+                        config={"displayModeBar": False},
+                        style={"height": "450px"}  # BIGGER GRAPH
+                    )
+                ]
             )
 
         ]), active_view
@@ -410,14 +473,29 @@ def render_page(_, *args):
         trend = df.groupby("date",as_index=False).sum()
 
         trend_fig = go.Figure()
-
-        trend_fig.add_bar(x=trend["date"],y=trend["energy_kwh"],name="Energy")
+        trend_fig.update_layout(
+            template="plotly_white",
+            hovermode="x unified",
+            transition=dict(duration=500, easing="cubic-in-out"),
+            margin=dict(l=20, r=20, t=40, b=20),
+            font=dict(size=14),
+        )
+        trend_fig.add_bar(
+            x=trend["date"],
+            y=trend["energy_kwh"],
+            name="Energy",
+            hovertemplate="<b>%{x}</b><br>Energy: %{y:.2f} kWh<extra></extra>"
+        )
 
         trend_fig.add_scatter(
             x=trend["date"],
             y=trend["carbon_kgco2"],
             yaxis="y2",
-            name="Carbon"
+            name="Carbon",
+            mode="lines+markers",
+            line=dict(width=3),
+            marker=dict(size=6),
+            hovertemplate="<b>%{x}</b><br>Carbon: %{y:.2f} kgCO₂<extra></extra>"
         )
 
         trend_fig.update_layout(
@@ -426,11 +504,25 @@ def render_page(_, *args):
         )
 
         energy_pie_fig = go.Figure(
-            data=[go.Pie(labels=energy_pie["system"],values=energy_pie["energy_kwh"],hole=0.3)]
+            data=[go.Pie(
+                labels=energy_pie["system"],
+                values=energy_pie["energy_kwh"],
+                hole=0.5,
+                textinfo="percent+label",
+                hoverinfo="label+value+percent",
+                pull=[0.03]*len(energy_pie),
+            )]
         )
 
         carbon_pie_fig = go.Figure(
-            data=[go.Pie(labels=carbon_pie["system"],values=carbon_pie["carbon_kgco2"],hole=0.3)]
+            data=[go.Pie(
+                labels=carbon_pie["system"],
+                values=carbon_pie["carbon_kgco2"],
+                hole=0.5,
+                textinfo="percent+label",
+                hoverinfo="label+value+percent",
+                pull=[0.03]*len(carbon_pie),
+            )]
         )
 
         return html.Div([
@@ -450,8 +542,20 @@ def render_page(_, *args):
             ),
 
             html.Div(
-                style={"background":"white","padding":"15px","borderRadius":"12px","marginBottom":"20px"},
-                children=[dcc.Graph(figure=trend_fig)]
+                className="graph-card",
+                style={
+                    "background": "white",
+                    "padding": "15px",
+                    "borderRadius": "16px",
+                    "boxShadow": "0 6px 18px rgba(0,0,0,0.08)",
+                },
+                children=[
+                    dcc.Graph(
+                        figure=trend_fig,
+                        config={"displayModeBar": False},
+                        style={"height": "450px"}  # BIGGER GRAPH
+                    )
+                ]
             ),
 
             html.Div(
@@ -492,14 +596,29 @@ def render_page(_, *args):
         trend = df.groupby("date",as_index=False).sum()
 
         fig = go.Figure()
-
-        fig.add_bar(x=trend["date"],y=trend["energy_kwh"],name="Energy")
+        fig.update_layout(
+            template="plotly_white",
+            hovermode="x unified",
+            transition=dict(duration=500, easing="cubic-in-out"),
+            margin=dict(l=20, r=20, t=40, b=20),
+            font=dict(size=14),
+        )
+        fig.add_bar(
+            x=trend["date"],
+            y=trend["energy_kwh"],
+            name="Energy",
+            hovertemplate="<b>%{x}</b><br>Energy: %{y:.2f} kWh<extra></extra>"
+        )
 
         fig.add_scatter(
             x=trend["date"],
             y=trend["carbon_kgco2"],
             yaxis="y2",
-            name="Carbon"
+            name="Carbon",
+            mode="lines+markers",
+            line=dict(width=3),
+            marker=dict(size=6),
+            hovertemplate="<b>%{x}</b><br>Carbon: %{y:.2f} kgCO₂<extra></extra>"
         )
 
         fig.update_layout(
@@ -523,8 +642,20 @@ def render_page(_, *args):
             ),
 
             html.Div(
-                style={"background":"white","padding":"15px","borderRadius":"12px"},
-                children=[dcc.Graph(figure=fig)]
+                className="graph-card",
+                style={
+                    "background": "white",
+                    "padding": "15px",
+                    "borderRadius": "16px",
+                    "boxShadow": "0 6px 18px rgba(0,0,0,0.08)",
+                },
+                children=[
+                    dcc.Graph(
+                        figure=fig,
+                        config={"displayModeBar": False},
+                        style={"height": "450px"}
+                    )
+                ]
             )
 
         ]), active_view
