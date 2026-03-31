@@ -527,14 +527,24 @@ def render_page(_, *args):
         )
 
         energy_pie_fig.update_layout(
+            title={
+                "text": "Energy Consumption by System",
+                "x": 0.5,   # center title
+                "xanchor": "center"
+            },
             showlegend=True,
-            margin=dict(t=30, b=20),
+            margin=dict(t=50, b=20),
         )
         carbon_pie_fig.update_layout(
+            title={
+                "text": "Carbon by System",
+                "x": 0.5,   # center title
+                "xanchor": "center"
+            },
             showlegend=True,
-            margin=dict(t=30, b=20),
+            margin=dict(t=50, b=20),
         )
-        
+
         return html.Div([
 
             html.H3("EMS Overview & Carbon Reporting"),
