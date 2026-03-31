@@ -26,12 +26,12 @@ CARBON_FACTOR = 0.408
 # =================================================
 
 systems = {
-    "bss": {"label": "Boiler & Steam", "name": "Boiler & Steam System (BSS)", "scope": "Scope 1 – Direct Emissions"},
-    "hps": {"label": "Heat Pump", "name": "Heat Pump System (HPS)", "scope": "Scope 2 – Electricity"},
-    "ps": {"label": "Pump System", "name": "Pump System (PS)", "scope": "Scope 2 – Electricity"},
-    "fs": {"label": "Fan System", "name": "Fan System (FS)", "scope": "Scope 2 – Electricity"},
-    "ac": {"label": "Air Compressor", "name": "Air Compressor System (ACIACS)", "scope": "Scope 2 – Electricity"},
-    "ls": {"label": "Lighting System", "name": "Lighting System (LS)", "scope": "Scope 2 – Electricity"},
+    "bss": {"label": "Boiler & Steam System (BSS)", "name": "Boiler & Steam System (BSS)", "scope": "Scope 1 – Direct Emissions"},
+    "hps": {"label": "Heat Pump System (HPS)", "name": "Heat Pump System (HPS)", "scope": "Scope 2 – Electricity"},
+    "ps": {"label": "Pump System (PS)", "name": "Pump System (PS)", "scope": "Scope 2 – Electricity"},
+    "fs": {"label": "Fan System (FS)", "name": "Fan System (FS)", "scope": "Scope 2 – Electricity"},
+    "ac": {"label": "Air Conditioning & Mechanical Ventilation System (ACMVS)", "name": "Air Conditioning & Mechanical Ventilation System (ACMVS)", "scope": "Scope 2 – Electricity"},
+    "ls": {"label": "Lighting System (LS)", "name": "Lighting System (LS)", "scope": "Scope 2 – Electricity"},
 }
 
 SYSTEM_OPTIONS = [{"label": v["label"], "value": v["name"]} for v in systems.values()]
@@ -244,7 +244,7 @@ app.layout = html.Div(
             },
             children=[
                 html.H3("EMS Dashboard"),
-                html.P("System-Based Reporting"),
+                html.P("Carbon Monitoring System"),
                 html.Hr(),
 
                 html.Button("Overview", id="nav-overview",
@@ -296,7 +296,7 @@ app.layout = html.Div(
                     children=[
                         html.H2("Singapore Institute of Technology",
                                 style={"margin": "0", "color": "#1F4FD8"}),
-                        html.P("Energy Efficiency Technology Laboratory – Energy Management System",
+                        html.P("Energy Efficiency Technology Facility – Carbon Monitoring System",
                                style={"margin": "0", "color": "#555"})
                     ]
                 ),
