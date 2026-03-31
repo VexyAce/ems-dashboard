@@ -686,17 +686,19 @@ def render_page(_, *args):
     State("date-range", "end_date"),
     State("agg-level", "value"),
     State("active-view", "data"),
+    State("compare-a", "value"),
+    State("compare-b", "value"),
     prevent_initial_call=True
 )
-def export_csv(n_clicks, start, end, agg, active_view):
+def export_csv(n_clicks, start, end, agg, active_view, compare_a, compare_b):
 
     # Get data based on current view
     if active_view == "overview":
         df = fetch_data(start, end, None, agg)
 
-    elif active_view == "compare":
+    elif active_view == "compare" and compare_a and compare_b:
         # export both systems
-        df = fetch_data(start, end, ALL_SYSTEM_NAMES, agg)
+        df = fetch_data(start, end, [compare_a, compare_b], agg)
 
     elif active_view in systems:
         system_name = systems[active_view]["name"]
