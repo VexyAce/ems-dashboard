@@ -102,6 +102,7 @@ bounds = pd.read_sql(
 
 MIN_DATE = bounds.loc[0, "min_d"]
 MAX_DATE = bounds.loc[0, "max_d"]
+TODAY = datetime.now().date()
 
 # =================================================
 # FETCH DATA
@@ -309,9 +310,9 @@ app.layout = html.Div(
                         dcc.DatePickerRange(
                             id="date-range",
                             min_date_allowed=MIN_DATE,
-                            max_date_allowed=MAX_DATE,
+                            max_date_allowed=TODAY,
                             start_date=MIN_DATE,
-                            end_date=MAX_DATE
+                            end_date=TODAY
                         ),
 
                         dcc.RadioItems(
